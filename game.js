@@ -7,6 +7,7 @@ const startButton = document.querySelector("#startButton");
 const usaScoreEl = document.querySelector("#usaScore");
 const germanyScoreEl = document.querySelector("#germanyScore");
 const roundTimerEl = document.querySelector("#roundTimer");
+const targetScoreLabelEl = document.querySelector("#targetScoreLabel");
 const hitMarkerEl = document.querySelector("#hitMarker");
 const damageVignetteEl = document.querySelector("#damageVignette");
 const scopeOverlayEl = document.querySelector("#scopeOverlay");
@@ -35,7 +36,7 @@ const messageEl = document.querySelector("#message");
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x7f929a);
-scene.fog = new THREE.FogExp2(0x7f929a, 0.0105);
+scene.fog = new THREE.FogExp2(0x7f929a, 0.0076);
 
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
@@ -52,7 +53,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
 const BASE_FOV = 74;
 const AIM_FOV = 39;
-const camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.03, 180);
+const camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.03, 260);
 const playerRig = new THREE.Object3D();
 const pitchRig = new THREE.Object3D();
 const weaponRoot = new THREE.Group();
@@ -81,10 +82,10 @@ const projectiles = [];
 const vehicles = [];
 
 const UP = new THREE.Vector3(0, 1, 0);
-const MAP_SIZE = 108;
+const MAP_SIZE = 168;
 const MAP_HALF = MAP_SIZE / 2;
-const TARGET_SCORE = 24;
-const ROUND_SECONDS = 240;
+const TARGET_SCORE = 56;
+const ROUND_SECONDS = 420;
 const PLAYER_RADIUS = 0.46;
 const BOT_RADIUS = 0.42;
 
@@ -97,7 +98,7 @@ const teams = {
     light: 0xdbeafe,
     uniform: 0x2c4a66,
     accent: 0xf8fafc,
-    spawn: new THREE.Vector3(0, 0, 38),
+    spawn: new THREE.Vector3(0, 0, 66),
   },
   germany: {
     label: "Eisenmark Republic",
@@ -107,7 +108,7 @@ const teams = {
     light: 0xfef3c7,
     uniform: 0x4c5548,
     accent: 0x111827,
-    spawn: new THREE.Vector3(0, 0, -38),
+    spawn: new THREE.Vector3(0, 0, -66),
   },
 };
 
@@ -260,22 +261,22 @@ const weaponSpecs = [
 const botWeapons = {
   usa: {
     name: "Asterian Patrol Rifle",
-    damage: 9,
+    damage: 9.5,
     rpm: 440,
-    range: 55,
+    range: 72,
     spread: 0.045,
   },
   germany: {
     name: "Eisenmark Field Carbine",
-    damage: 8,
+    damage: 8.8,
     rpm: 465,
-    range: 58,
+    range: 74,
     spread: 0.047,
   },
 };
 
-const usaNames = ["Vale", "Rook", "Marin", "Hale", "Soren"];
-const germanNames = ["Kade", "Strahl", "Venn", "Keller", "Falk", "Orren", "Brigg"];
+const usaNames = ["Vale", "Rook", "Marin", "Hale", "Soren", "Ames", "Juno", "Pike", "Orin", "Talon", "Reed", "Knox", "Voss", "Lark", "Mira", "Cade"];
+const germanNames = ["Kade", "Strahl", "Venn", "Keller", "Falk", "Orren", "Brigg", "Merek", "Voln", "Ryker", "Toren", "Axel", "Dorn", "Hess", "Korr", "Ivar"];
 
 const playerWeapons = weaponSpecs.map((weapon) => ({
   ...weapon,
@@ -1265,15 +1266,15 @@ function buildLights() {
   scene.add(hemi);
 
   const sun = new THREE.DirectionalLight(0xfff4dc, 3.55);
-  sun.position.set(-34, 58, 28);
+  sun.position.set(-54, 70, 42);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.near = 1;
-  sun.shadow.camera.far = 150;
-  sun.shadow.camera.left = -62;
-  sun.shadow.camera.right = 62;
-  sun.shadow.camera.top = 62;
-  sun.shadow.camera.bottom = -62;
+  sun.shadow.camera.far = 220;
+  sun.shadow.camera.left = -96;
+  sun.shadow.camera.right = 96;
+  sun.shadow.camera.top = 96;
+  sun.shadow.camera.bottom = -96;
   scene.add(sun);
 
   const fill = new THREE.DirectionalLight(0x93c5fd, 0.72);
@@ -1303,6 +1304,10 @@ function buildMap() {
 
   addBlock({ x: 0, z: 0, width: 7.2, height: 0.05, depth: MAP_SIZE, material: materials.road, blocks: false });
   addBlock({ x: 0, z: 0, width: MAP_SIZE, height: 0.05, depth: 6.6, material: materials.road, blocks: false });
+  addBlock({ x: -50, z: 0, width: 5.2, height: 0.045, depth: MAP_SIZE * 0.72, material: materials.road, blocks: false });
+  addBlock({ x: 50, z: 0, width: 5.2, height: 0.045, depth: MAP_SIZE * 0.72, material: materials.road, blocks: false });
+  addBlock({ x: 0, z: 50, width: MAP_SIZE * 0.72, height: 0.045, depth: 4.8, material: materials.road, blocks: false });
+  addBlock({ x: 0, z: -50, width: MAP_SIZE * 0.72, height: 0.045, depth: 4.8, material: materials.road, blocks: false });
   addRoadMarkings();
   addGroundDetails();
 
@@ -1316,11 +1321,21 @@ function buildMap() {
   addBuilding(24, 10, 12, 16, 4.5);
   addBuilding(-31, 25, 10, 9, 3.7);
   addBuilding(31, -25, 10, 9, 3.7);
+  addBuilding(-55, 52, 13, 12, 4.2);
+  addBuilding(55, 52, 13, 12, 4.2);
+  addBuilding(-55, -52, 13, 12, 4.2);
+  addBuilding(55, -52, 13, 12, 4.2);
+  addBuilding(-66, 5, 10, 18, 4.0);
+  addBuilding(66, -5, 10, 18, 4.0);
 
   addContainer(-9, 18, 12, 4, 3, 0.2, 0x214c79);
   addContainer(13, -18, 12, 4, 3, -0.25, 0x756226);
   addContainer(35, 2, 13, 4, 3, Math.PI / 2, 0x5b6774);
   addContainer(-35, -2, 13, 4, 3, Math.PI / 2, 0x4f5f37);
+  addContainer(-62, 31, 13, 4, 3, Math.PI / 2 + 0.18, 0x1f4f63);
+  addContainer(62, -31, 13, 4, 3, Math.PI / 2 - 0.18, 0x6b5f38);
+  addContainer(-19, 59, 12, 4, 3, -0.18, 0x374151);
+  addContainer(19, -59, 12, 4, 3, Math.PI + 0.18, 0x4f4632);
 
   const crateSpots = [
     [-12, -2],
@@ -1333,6 +1348,12 @@ function buildMap() {
     [36, -13],
     [22, 31],
     [-22, -31],
+    [-58, 15],
+    [58, -15],
+    [-47, 61],
+    [47, -61],
+    [69, 26],
+    [-69, -26],
   ];
   crateSpots.forEach(([x, z], index) => addCrateStack(x, z, index % 3));
 
@@ -1342,22 +1363,44 @@ function buildMap() {
   addSandbagLine(29, 18, 5, -Math.PI / 2);
   addSandbagLine(0, 13, 6, Math.PI / 2);
   addSandbagLine(0, -13, 6, Math.PI / 2);
+  addSandbagLine(-18, 62, 8, 0.08);
+  addSandbagLine(18, -62, 8, Math.PI + 0.08);
+  addSandbagLine(-58, 42, 6, Math.PI / 2);
+  addSandbagLine(58, -42, 6, Math.PI / 2);
+  addSandbagLine(-50, -48, 6, 0);
+  addSandbagLine(50, 48, 6, Math.PI);
 
   addTower(-44, 42, "usa");
   addTower(44, -42, "germany");
+  addTower(-74, 70, "usa");
+  addTower(74, -70, "germany");
   addFlag(teams.usa, -8, 44);
   addFlag(teams.germany, 8, -44);
+  addFlag(teams.usa, -9, 75);
+  addFlag(teams.germany, 9, -75);
   addAmmoTable(-7, 35, "usa");
   addAmmoTable(7, -35, "germany");
+  addAmmoTable(-17, 69, "usa");
+  addAmmoTable(17, -69, "germany");
 
   addFloodLight(-18, 36, -0.4);
   addFloodLight(18, -36, 2.7);
   addFloodLight(-42, -10, 1.25);
   addFloodLight(42, 10, -1.9);
+  addFloodLight(-66, 52, -0.7);
+  addFloodLight(66, -52, 2.45);
+  addFloodLight(-58, -48, 1.8);
+  addFloodLight(58, 48, -1.35);
   addDirectionalSign(-6, 8, "A-SECTOR", teams.usa.color, 0.2);
   addDirectionalSign(8, -8, "B-SECTOR", teams.germany.color, Math.PI + 0.2);
+  addDirectionalSign(-42, 50, "C-SECTOR", teams.usa.color, -0.1);
+  addDirectionalSign(42, -50, "D-SECTOR", teams.germany.color, Math.PI - 0.1);
   addFenceSection(-42, 24, 12, Math.PI / 2);
   addFenceSection(42, -24, 12, Math.PI / 2);
+  addFenceSection(-73, 39, 16, Math.PI / 2);
+  addFenceSection(73, -39, 16, Math.PI / 2);
+  addFenceSection(-21, 73, 18, 0);
+  addFenceSection(21, -73, 18, 0);
 
   [
     [-19, 13, 4],
@@ -1366,6 +1409,10 @@ function buildMap() {
     [41, -29, 4],
     [6, 27, 3],
     [-6, -27, 3],
+    [-62, 58, 4],
+    [62, -58, 4],
+    [-72, -18, 3],
+    [72, 18, 3],
   ].forEach(([x, z, count]) => addTireStack(x, z, count));
 
   addBarrelCluster(-27, 5, 0x475569);
@@ -1376,22 +1423,40 @@ function buildMap() {
   addRubblePile(27, 19);
   addRubblePile(-3, 25);
   addRubblePile(3, -25);
+  addRubblePile(-58, 50);
+  addRubblePile(58, -50);
+  addRubblePile(-64, -36);
+  addRubblePile(64, 36);
   addSmokeColumn(-26, -18);
   addSmokeColumn(27, 19);
   addSmokeColumn(0, -33);
+  addSmokeColumn(-58, 50);
+  addSmokeColumn(58, -50);
 
   addConcreteBarrier(-8, 9, 0.08, teams.usa.color);
   addConcreteBarrier(8, -9, 0.08, teams.germany.color);
   addConcreteBarrier(-34, -8, Math.PI / 2, teams.usa.color);
   addConcreteBarrier(34, 8, Math.PI / 2, teams.germany.color);
+  addConcreteBarrier(-48, 38, Math.PI / 2, teams.usa.color);
+  addConcreteBarrier(48, -38, Math.PI / 2, teams.germany.color);
+  addConcreteBarrier(-63, -12, 0.08, teams.usa.color);
+  addConcreteBarrier(63, 12, 0.08, teams.germany.color);
   addCableSpool(-17, 24, 0.35);
   addCableSpool(17, -24, -0.35);
+  addCableSpool(-63, 58, 0.2);
+  addCableSpool(63, -58, -0.2);
   addFieldTent(-17, 41, "usa", 0.3);
   addFieldTent(17, -41, "germany", Math.PI + 0.3);
+  addFieldTent(-24, 72, "usa", 0.1);
+  addFieldTent(24, -72, "germany", Math.PI + 0.1);
   addRadioAntenna(-12, 43, "usa");
   addRadioAntenna(12, -43, "germany");
+  addRadioAntenna(-31, 73, "usa");
+  addRadioAntenna(31, -73, "germany");
   addExtraShellCrates(-12, 34, "usa");
   addExtraShellCrates(12, -34, "germany");
+  addExtraShellCrates(-34, 66, "usa");
+  addExtraShellCrates(34, -66, "germany");
   addBulletScars(-23, -16.04, 0, 14);
   addBulletScars(24, 18.04, Math.PI, 14);
   addBulletScars(-37.04, -2, Math.PI / 2, 10);
@@ -1401,38 +1466,74 @@ function buildMap() {
   addCrater(21, 3, 2.4);
   addCrater(-9, -29, 2.1);
   addCrater(9, 29, 2.2);
+  addCrater(-52, -7, 2.3);
+  addCrater(52, 7, 2.3);
+  addCrater(-64, 47, 2.7);
+  addCrater(64, -47, 2.7);
   addPuddle(-5, 18, 1.7, 0.8, 0.4);
   addPuddle(6, -18, 1.6, 0.72, -0.5);
   addPuddle(-31, 7, 1.25, 0.58, 1.2);
+  addPuddle(-59, -27, 1.45, 0.65, -0.6);
+  addPuddle(59, 27, 1.45, 0.65, 0.6);
   addTrenchSegment(-30, 36, 10, -0.18);
   addTrenchSegment(30, -36, 10, Math.PI - 0.18);
+  addTrenchSegment(-47, 68, 12, 0.05);
+  addTrenchSegment(47, -68, 12, Math.PI + 0.05);
+  addTrenchSegment(-70, -28, 10, Math.PI / 2);
+  addTrenchSegment(70, 28, 10, Math.PI / 2);
   addRazorWire(-5, 27, 6, 0.1);
   addRazorWire(5, -27, 6, 0.1);
   addRazorWire(-38, 5, 5, Math.PI / 2);
   addRazorWire(38, -5, 5, Math.PI / 2);
+  addRazorWire(-34, 70, 7, 0.1);
+  addRazorWire(34, -70, 7, 0.1);
+  addRazorWire(-74, 1, 6, Math.PI / 2);
+  addRazorWire(74, -1, 6, Math.PI / 2);
   addWreckedVehicle(-33, -33, 0.55);
+  addWreckedVehicle(33, 33, Math.PI + 0.35);
+  addWreckedVehicle(-70, 22, -0.8);
+  addWreckedVehicle(70, -22, Math.PI - 0.8);
   addSmokeColumn(-33, -33);
+  addSmokeColumn(33, 33);
   addMudRuts(-3, 41, 8, 0.18);
   addMudRuts(8, -42, 8, Math.PI + 0.12);
   addMudRuts(-44, 0, 10, Math.PI / 2);
+  addMudRuts(44, 0, 10, Math.PI / 2);
+  addMudRuts(-52, 66, 9, -0.08);
+  addMudRuts(52, -66, 9, Math.PI - 0.08);
   addSpentShells(-8, 33, 22, 4.2);
   addSpentShells(8, -33, 22, 4.2);
   addSpentShells(0, 8, 14, 3.5);
+  addSpentShells(-41, 64, 18, 4.0);
+  addSpentShells(41, -64, 18, 4.0);
   addMortarPit(-21, 37, "usa", -0.22);
   addMortarPit(21, -37, "germany", Math.PI - 0.22);
+  addMortarPit(-38, 70, "usa", 0.1);
+  addMortarPit(38, -70, "germany", Math.PI + 0.1);
   addDrivableVehicle(-2.6, 40.4, "Aster Outrider", teams.usa.color, 0.08, "rover");
   addDrivableVehicle(1.8, 40.0, "Aster Hammer Tank", 0x334155, -0.12, "tank");
   addDrivableVehicle(-15, 45, "Aster Wasp Helo", 0x1f3b57, 0.25, "helicopter");
   addDrivableVehicle(-28, 45, "Aster Kite Jet", 0x475569, 0.05, "jet");
   addDrivableVehicle(-11, 47, "Aster Scout", teams.usa.color, 0.08, "rover");
+  addDrivableVehicle(-6, 70, "Aster Ridge Tank", 0x2f3f4f, -0.1, "tank");
+  addDrivableVehicle(-44, 69, "Aster Longhorn IFV", 0x334155, 0.18, "halftrack");
+  addDrivableVehicle(47, 64, "Aster Falcon Jet", 0x64748b, -0.25, "jet");
   addDrivableVehicle(11, -47, "Eisen Runner", teams.germany.color, Math.PI + 0.08, "rover");
   addDrivableVehicle(-9, -47, "Eisen Siege Tank", 0x51462d, Math.PI + 0.18, "tank");
   addDrivableVehicle(22, -44, "Eisen Vulture", 0x4c5548, Math.PI - 0.3, "helicopter");
+  addDrivableVehicle(6, -70, "Eisen Iron Tank", 0x4b412c, Math.PI + 0.12, "tank");
+  addDrivableVehicle(44, -69, "Eisen Moth Helo", 0x42503d, Math.PI - 0.18, "helicopter");
+  addDrivableVehicle(-47, -64, "Eisen Pike Jet", 0x3f454b, Math.PI + 0.25, "jet");
   addDrivableVehicle(-46, 0, "Mudback IFV", 0x4b5563, Math.PI / 2, "halftrack");
+  addDrivableVehicle(46, 0, "Crossroad IFV", 0x52525b, -Math.PI / 2, "halftrack");
   addTankTrap(-2, 34, 0.2);
   addTankTrap(2, -34, -0.2);
   addTankTrap(-45, 12, Math.PI / 2);
   addTankTrap(45, -12, Math.PI / 2);
+  addTankTrap(-12, 69, 0.2);
+  addTankTrap(12, -69, -0.2);
+  addTankTrap(-73, 18, Math.PI / 2);
+  addTankTrap(73, -18, Math.PI / 2);
 }
 
 function addBuilding(x, z, width, depth, height) {
@@ -1872,22 +1973,45 @@ function getSpawnPoint(teamKey, index = 0) {
   const spread = [
     [-8, 0],
     [8, 0],
-    [-14, -5 * side],
-    [14, -5 * side],
-    [0, -8 * side],
-    [-20, 4 * side],
-    [20, 4 * side],
+    [-15, -6 * side],
+    [15, -6 * side],
+    [0, -11 * side],
+    [-24, -2 * side],
+    [24, -2 * side],
+    [-33, -9 * side],
+    [33, -9 * side],
+    [-42, -3 * side],
+    [42, -3 * side],
+    [-17, 8 * side],
+    [17, 8 * side],
+    [0, 11 * side],
+    [-51, -11 * side],
+    [51, -11 * side],
   ];
-  const [x, z] = spread[index % spread.length];
-  return new THREE.Vector3(base.x + x + THREE.MathUtils.randFloatSpread(1.8), 0, base.z + z + THREE.MathUtils.randFloatSpread(1.8));
+  for (let attempt = 0; attempt < spread.length * 2; attempt += 1) {
+    const [x, z] = spread[(index + attempt) % spread.length];
+    const candidate = new THREE.Vector3(
+      base.x + x + THREE.MathUtils.randFloatSpread(2.3),
+      0,
+      base.z + z + THREE.MathUtils.randFloatSpread(2.3),
+    );
+    if (!collides(candidate, BOT_RADIUS + 0.22)) return candidate;
+  }
+  return new THREE.Vector3(base.x + THREE.MathUtils.randFloatSpread(4), 0, base.z - 9 * side + THREE.MathUtils.randFloatSpread(4));
 }
 
 function getPatrolPoint(teamKey) {
-  const side = teamKey === "usa" ? 1 : -1;
+  const homeZone = teamKey === "usa"
+    ? [MAP_HALF * 0.24, MAP_HALF * 0.78]
+    : [-MAP_HALF * 0.78, -MAP_HALF * 0.24];
+  const forwardZone = teamKey === "usa"
+    ? [-MAP_HALF * 0.62, MAP_HALF * 0.23]
+    : [-MAP_HALF * 0.23, MAP_HALF * 0.62];
+  const zRange = Math.random() < 0.72 ? forwardZone : homeZone;
   return new THREE.Vector3(
-    THREE.MathUtils.randFloatSpread(45),
+    THREE.MathUtils.randFloatSpread(MAP_SIZE * 0.86),
     0,
-    THREE.MathUtils.randFloat(-32 * side, 8 * side),
+    THREE.MathUtils.randFloat(zRange[0], zRange[1]),
   );
 }
 
@@ -3258,14 +3382,16 @@ function moveBotCombat(bot, target, visible, delta) {
 
   const side = new THREE.Vector3(-toTarget.z, 0, toTarget.x).multiplyScalar(Math.sin(clock.elapsedTime * 1.1 + bot.strafeSeed));
   const desired = new THREE.Vector3();
+  const engagementDistance = bot.weapon.range > 65 ? 34 : 26;
+  const retreatDistance = bot.weapon.range > 65 ? 11 : 9.5;
 
-  if (!visible || distance > 25) desired.add(toTarget);
-  if (distance < 10) desired.addScaledVector(toTarget, -0.9);
-  if (distance >= 10 && distance <= 28) desired.addScaledVector(side, 0.75);
+  if (!visible || distance > engagementDistance) desired.add(toTarget);
+  if (distance < retreatDistance) desired.addScaledVector(toTarget, -0.9);
+  if (distance >= retreatDistance && distance <= engagementDistance + 5) desired.addScaledVector(side, 0.75);
   if (desired.lengthSq() < 0.001) desired.copy(side);
   desired.normalize();
 
-  const speed = visible ? 2.55 : 3.25;
+  const speed = visible ? 2.7 : 3.35;
   moveWithCollision(bot.position, desired.x * speed * delta, desired.z * speed * delta, BOT_RADIUS);
   bot.group.position.copy(bot.position);
 }
@@ -3438,7 +3564,31 @@ function takePlayerDamage(amount, sourceBot) {
 
 function respawnPlayer() {
   const spawn = teams.usa.spawn;
-  player.position.set(spawn.x + THREE.MathUtils.randFloatSpread(6), 0, spawn.z + THREE.MathUtils.randFloatSpread(4));
+  const offsets = [
+    [0, -6],
+    [-7, -8],
+    [7, -8],
+    [-13, -4],
+    [13, -4],
+    [-20, -10],
+    [20, -10],
+    [-5, 5],
+    [5, 5],
+  ];
+  let respawnPosition = new THREE.Vector3(spawn.x, 0, spawn.z - 8);
+  for (let attempt = 0; attempt < offsets.length * 2; attempt += 1) {
+    const [x, z] = offsets[attempt % offsets.length];
+    const candidate = new THREE.Vector3(
+      spawn.x + x + THREE.MathUtils.randFloatSpread(2),
+      0,
+      spawn.z + z + THREE.MathUtils.randFloatSpread(2),
+    );
+    if (!collides(candidate, PLAYER_RADIUS + 0.25)) {
+      respawnPosition = candidate;
+      break;
+    }
+  }
+  player.position.copy(respawnPosition);
   player.velocity.set(0, 0, 0);
   player.verticalVelocity = 0;
   player.verticalOffset = 0;
@@ -3536,6 +3686,7 @@ function updateHud() {
   usaScoreEl.textContent = String(usaScore);
   germanyScoreEl.textContent = String(germanyScore);
   roundTimerEl.textContent = formatTime(roundTime);
+  targetScoreLabelEl.textContent = `Target score: ${TARGET_SCORE}`;
 
   healthTextEl.textContent = String(Math.max(0, Math.round(player.health)));
   armorTextEl.textContent = String(Math.max(0, Math.round(player.armor)));
