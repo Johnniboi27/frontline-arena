@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Frontline Arena</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main id="gameShell">
+      <canvas id="gameCanvas" tabindex="0"></canvas>
+
+      <section id="startScreen" class="overlay">
+        <div class="start-panel">
+          <p class="kicker">Asterian Union vs Eisenmark Republic</p>
+          <h1>Frontline Arena</h1>
+          <p>
+            Join the Asterian Union squad, break through the Eisenmark Republic
+            line, and use detailed weapon handling to win the skirmish.
+          </p>
+          <button id="startButton" type="button">Click to Deploy</button>
+          <div class="control-grid" aria-label="Game controls">
+            <span><strong>WASD</strong> Move</span>
+            <span><strong>Mouse</strong> Look</span>
+            <span><strong>Click</strong> Fire</span>
+            <span><strong>Right Click</strong> Zoom</span>
+            <span><strong>G</strong> Grenade</span>
+            <span><strong>T</strong> Smoke</span>
+            <span><strong>Q</strong> Flashbang</span>
+            <span><strong>F</strong> Knife</span>
+            <span><strong>H</strong> Med Kit</span>
+            <span><strong>R</strong> Reload</span>
+            <span><strong>1-7</strong> Classes</span>
+            <span><strong>Shift</strong> Sprint</span>
+            <span><strong>E</strong> Drive/Fly</span>
+            <span><strong>Vehicle Click</strong> Missile</span>
+            <span><strong>Ctrl</strong> Crouch</span>
+            <span><strong>Z</strong> Prone</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="pauseScreen" class="overlay hidden">
+        <div class="start-panel compact">
+          <p class="kicker">Paused</p>
+          <h2>Click to resume pointer lock</h2>
+          <p>Press Escape any time to release the mouse.</p>
+        </div>
+      </section>
+
+      <div id="hud">
+        <div class="top-bar">
+          <div class="score-card usa">
+            <span>Asteria</span>
+            <strong id="usaScore">0</strong>
+          </div>
+          <div class="round-card">
+            <span id="roundTimer">04:00</span>
+            <small>Target score: 24</small>
+          </div>
+          <div class="score-card germany">
+            <span>Eisenmark</span>
+            <strong id="germanyScore">0</strong>
+          </div>
+        </div>
+
+        <div id="hitMarker" aria-hidden="true">×</div>
+        <div id="crosshair" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+        </div>
+
+        <div id="damageVignette" aria-hidden="true"></div>
+        <div id="scopeOverlay" aria-hidden="true"></div>
+        <div id="flashOverlay" aria-hidden="true"></div>
+        <div id="cinemaOverlay" aria-hidden="true"></div>
+        <div id="knifeSlash" aria-hidden="true"></div>
+
+        <aside id="statusPanel">
+          <div>
+            <small>Health</small>
+            <div class="meter">
+              <span id="healthFill"></span>
+            </div>
+            <strong id="healthText">100</strong>
+          </div>
+          <div>
+            <small>Armor</small>
+            <div class="meter armor">
+              <span id="armorFill"></span>
+            </div>
+            <strong id="armorText">45</strong>
+          </div>
+          <div>
+            <small>Stance</small>
+            <div class="meter stance">
+              <span id="stanceFill"></span>
+            </div>
+            <strong id="stanceText">Stand</strong>
+          </div>
+          <div>
+            <small>Grenades</small>
+            <div class="meter grenade">
+              <span id="grenadeFill"></span>
+            </div>
+            <strong id="grenadeText">3</strong>
+          </div>
+          <div>
+            <small>Gear</small>
+            <div class="meter utility">
+              <span id="utilityFill"></span>
+            </div>
+            <strong id="utilityText">S2/F2/M2</strong>
+          </div>
+          <div>
+            <small>Vehicle</small>
+            <div class="meter vehicle">
+              <span id="vehicleFill"></span>
+            </div>
+            <strong id="vehicleText">--</strong>
+          </div>
+        </aside>
+
+        <aside id="weaponPanel">
+          <small id="weaponClass">Assault Rifle</small>
+          <h2 id="weaponName">M4A1 Liberty</h2>
+          <div class="class-row">
+            <span>Class</span>
+            <strong id="classText">Rifleman</strong>
+          </div>
+          <div class="ammo-row">
+            <strong id="ammoText">30</strong>
+            <span id="reserveText">/ 120</span>
+          </div>
+          <div id="reloadBar"><span></span></div>
+        </aside>
+
+        <aside id="feed"></aside>
+
+        <div id="message">Click to lock mouse and start</div>
+      </div>
+    </main>
+
+    <script type="module" src="./game.js"></script>
+  </body>
+</html>
