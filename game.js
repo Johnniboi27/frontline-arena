@@ -47,9 +47,9 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.18;
+renderer.toneMappingExposure = 1.26;
 renderer.useLegacyLights = false;
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.35));
 
 const BASE_FOV = 74;
 const AIM_FOV = 39;
@@ -378,10 +378,11 @@ const materials = {
   canvas: mat(0x6d7657, 0.92, 0.01),
   puddle: new THREE.MeshStandardMaterial({
     color: 0x4b6470,
-    roughness: 0.12,
+    roughness: 0.04,
     metalness: 0,
     transparent: true,
-    opacity: 0.54,
+    opacity: 0.62,
+    envMapIntensity: 1.2,
   }),
   glass: new THREE.MeshStandardMaterial({
     color: 0x9ecae6,
@@ -400,7 +401,7 @@ const materials = {
   }),
 };
 
-function makeDetailTexture({ base = "#64748b", speck = "#0f172a", line = "#94a3b8", size = 256, grid = false, noise = 900 }) {
+function makeDetailTexture({ base = "#64748b", speck = "#0f172a", line = "#94a3b8", size = 512, grid = false, noise = 900 }) {
   const textureCanvas = document.createElement("canvas");
   textureCanvas.width = size;
   textureCanvas.height = size;
@@ -435,7 +436,7 @@ function makeDetailTexture({ base = "#64748b", speck = "#0f172a", line = "#94a3b
   return texture;
 }
 
-function makeBumpTexture({ base = 90, contrast = 120, size = 256, scratches = 30 }) {
+function makeBumpTexture({ base = 90, contrast = 120, size = 512, scratches = 30 }) {
   const textureCanvas = document.createElement("canvas");
   textureCanvas.width = size;
   textureCanvas.height = size;
@@ -483,6 +484,11 @@ function applyExtraDetailMaterials() {
   materials.crate.bumpScale = 0.055;
   materials.sandbag.bumpMap = makeBumpTexture({ base: 126, contrast: 58, scratches: 12 });
   materials.sandbag.bumpScale = 0.075;
+  materials.wetMud.roughness = 0.38;
+  materials.wetMud.metalness = 0.02;
+  materials.metal.envMapIntensity = 1.15;
+  materials.darkMetal.envMapIntensity = 1.25;
+  materials.glass.envMapIntensity = 1.35;
   [
     materials.ground,
     materials.road,
@@ -491,6 +497,10 @@ function applyExtraDetailMaterials() {
     materials.crate,
     materials.crateDark,
     materials.sandbag,
+    materials.wetMud,
+    materials.metal,
+    materials.darkMetal,
+    materials.glass,
   ].forEach((material) => {
     material.needsUpdate = true;
   });
@@ -560,50 +570,86 @@ function addCylinder({
 
 function buildSkyDome() {
   const canvasTexture = document.createElement("canvas");
-  canvasTexture.width = 32;
-  canvasTexture.height = 256;
+  canvasTexture.width = 64;
+  canvasTexture.height = 512;
   const ctx = canvasTexture.getContext("2d");
   const gradient = ctx.createLinearGradient(0, 0, 0, canvasTexture.height);
-  gradient.addColorStop(0, "#9fb7c5");
-  gradient.addColorStop(0.52, "#7f98a7");
-  gradient.addColorStop(1, "#4d5e62");
+  gradient.addColorStop(0, "#c7d8df");
+  gradient.addColorStop(0.24, "#9fb8c5");
+  gradient.addColorStop(0.58, "#728c96");
+  gradient.addColorStop(1, "#3d4f52");
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvasTexture.width, canvasTexture.height);
   const skyTexture = new THREE.CanvasTexture(canvasTexture);
   skyTexture.colorSpace = THREE.SRGBColorSpace;
 
   const sky = new THREE.Mesh(
-    new THREE.SphereGeometry(150, 32, 16),
+    new THREE.SphereGeometry(220, 48, 24),
     new THREE.MeshBasicMaterial({ map: skyTexture, side: THREE.BackSide }),
   );
   sky.position.y = 18;
   scene.add(sky);
 
+  const sunDisk = new THREE.Mesh(
+    new THREE.CircleGeometry(7.5, 48),
+    new THREE.MeshBasicMaterial({ color: 0xfff2c7, transparent: true, opacity: 0.46, depthWrite: false }),
+  );
+  sunDisk.position.set(-87, 82, 68);
+  sunDisk.rotation.set(-0.45, -0.62, -0.12);
+  scene.add(sunDisk);
+
   const cloudMat = new THREE.MeshBasicMaterial({
     color: 0xdbeafe,
     transparent: true,
-    opacity: 0.2,
+    opacity: 0.18,
     depthWrite: false,
   });
-  for (let i = 0; i < 12; i += 1) {
-    const cloud = new THREE.Mesh(new THREE.PlaneGeometry(12 + i * 0.35, 2.4), cloudMat.clone());
-    cloud.position.set(THREE.MathUtils.randFloatSpread(95), 32 + Math.random() * 12, THREE.MathUtils.randFloatSpread(95));
-    cloud.rotation.set(-0.25, Math.random() * Math.PI, 0);
+  for (let i = 0; i < 26; i += 1) {
+    const material = cloudMat.clone();
+    material.opacity = THREE.MathUtils.randFloat(0.11, 0.25);
+    const cloud = new THREE.Mesh(new THREE.PlaneGeometry(13 + i * 0.22, THREE.MathUtils.randFloat(1.8, 3.5)), material);
+    cloud.position.set(THREE.MathUtils.randFloatSpread(165), 31 + Math.random() * 15, THREE.MathUtils.randFloatSpread(165));
+    cloud.rotation.set(-0.22, Math.random() * Math.PI, THREE.MathUtils.randFloatSpread(0.08));
     scene.add(cloud);
   }
 }
 
+function addAtmosphericLightBeams() {
+  const beamMat = new THREE.MeshBasicMaterial({
+    color: 0xffefd2,
+    transparent: true,
+    opacity: 0.055,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+  const beamSpots = [
+    [-45, 11, -0.9],
+    [-18, -18, -0.7],
+    [34, 27, -1.05],
+    [61, -42, -0.82],
+    [-70, 55, -0.65],
+  ];
+  beamSpots.forEach(([x, z, rot], index) => {
+    const beam = new THREE.Mesh(new THREE.PlaneGeometry(18 + index * 2.2, 46), beamMat.clone());
+    beam.position.set(x, 17 + index * 1.8, z);
+    beam.rotation.set(-0.94, rot, 0.14);
+    scene.add(beam);
+    heatShimmers.push({ mesh: beam, seed: Math.random() * Math.PI * 2, baseOpacity: beam.material.opacity });
+  });
+}
+
 function addRoadMarkings() {
-  for (let z = -48; z <= 48; z += 9) {
+  for (let z = -78; z <= 78; z += 9) {
     addBlock({ x: 0, y: 0.04, z, width: 0.28, height: 0.02, depth: 4.8, material: materials.hazard, blocks: false });
   }
-  for (let x = -48; x <= 48; x += 9) {
+  for (let x = -78; x <= 78; x += 9) {
     addBlock({ x, y: 0.04, z: 0, width: 4.8, height: 0.02, depth: 0.28, material: materials.hazard, blocks: false });
   }
   const crackMat = mat(0x181c1f, 0.98, 0.01);
-  for (let i = 0; i < 28; i += 1) {
+  for (let i = 0; i < 64; i += 1) {
     const crack = new THREE.Mesh(new THREE.PlaneGeometry(THREE.MathUtils.randFloat(1.2, 3.6), 0.035), crackMat);
-    crack.position.set(THREE.MathUtils.randFloatSpread(95), 0.064, THREE.MathUtils.randFloatSpread(95));
+    crack.position.set(THREE.MathUtils.randFloatSpread(MAP_SIZE * 0.92), 0.064, THREE.MathUtils.randFloatSpread(MAP_SIZE * 0.92));
     crack.rotation.set(-Math.PI / 2, 0, Math.random() * Math.PI);
     scene.add(crack);
   }
@@ -611,14 +657,14 @@ function addRoadMarkings() {
 
 function addGroundDetails() {
   const grassGeo = new THREE.ConeGeometry(0.035, 0.42, 4);
-  const grass = new THREE.InstancedMesh(grassGeo, materials.grassBlade, 260);
+  const grass = new THREE.InstancedMesh(grassGeo, materials.grassBlade, 680);
   const matrix = new THREE.Matrix4();
   const quat = new THREE.Quaternion();
   const scale = new THREE.Vector3();
   const pos = new THREE.Vector3();
-  for (let i = 0; i < 260; i += 1) {
-    let x = THREE.MathUtils.randFloatSpread(100);
-    let z = THREE.MathUtils.randFloatSpread(100);
+  for (let i = 0; i < 680; i += 1) {
+    let x = THREE.MathUtils.randFloatSpread(MAP_SIZE * 0.94);
+    let z = THREE.MathUtils.randFloatSpread(MAP_SIZE * 0.94);
     if (Math.abs(x) < 5 || Math.abs(z) < 5) {
       x += Math.sign(x || 1) * 8;
       z += Math.sign(z || 1) * 8;
@@ -633,12 +679,12 @@ function addGroundDetails() {
   grass.receiveShadow = true;
   scene.add(grass);
 
-  for (let i = 0; i < 16; i += 1) {
+  for (let i = 0; i < 36; i += 1) {
     const patch = new THREE.Mesh(
       new THREE.CircleGeometry(THREE.MathUtils.randFloat(0.8, 2.2), 18),
       materials.mud,
     );
-    patch.position.set(THREE.MathUtils.randFloatSpread(92), 0.058, THREE.MathUtils.randFloatSpread(92));
+    patch.position.set(THREE.MathUtils.randFloatSpread(MAP_SIZE * 0.88), 0.058, THREE.MathUtils.randFloatSpread(MAP_SIZE * 0.88));
     patch.rotation.x = -Math.PI / 2;
     patch.rotation.z = Math.random() * Math.PI;
     patch.receiveShadow = true;
@@ -1077,9 +1123,9 @@ function addDustMotes() {
     opacity: 0.34,
     depthWrite: false,
   });
-  for (let i = 0; i < 90; i += 1) {
+  for (let i = 0; i < 160; i += 1) {
     const mote = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.08), dustMat.clone());
-    mote.position.set(THREE.MathUtils.randFloatSpread(92), THREE.MathUtils.randFloat(0.8, 8), THREE.MathUtils.randFloatSpread(92));
+    mote.position.set(THREE.MathUtils.randFloatSpread(MAP_SIZE * 0.92), THREE.MathUtils.randFloat(0.8, 10), THREE.MathUtils.randFloatSpread(MAP_SIZE * 0.92));
     mote.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
     scene.add(mote);
     dustMotes.push({ mesh: mote, seed: Math.random() * Math.PI * 2, drift: THREE.MathUtils.randFloat(0.15, 0.6) });
@@ -1261,6 +1307,7 @@ function addBulletScars(x, z, rotationY = 0, count = 12) {
 function buildLights() {
   buildSkyDome();
   addDustMotes();
+  addAtmosphericLightBeams();
 
   const hemi = new THREE.HemisphereLight(0xdbeafe, 0x2f3a2d, 1.08);
   scene.add(hemi);
@@ -1268,13 +1315,15 @@ function buildLights() {
   const sun = new THREE.DirectionalLight(0xfff4dc, 3.55);
   sun.position.set(-54, 70, 42);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(4096, 4096);
   sun.shadow.camera.near = 1;
   sun.shadow.camera.far = 220;
   sun.shadow.camera.left = -96;
   sun.shadow.camera.right = 96;
   sun.shadow.camera.top = 96;
   sun.shadow.camera.bottom = -96;
+  sun.shadow.bias = -0.00018;
+  sun.shadow.normalBias = 0.018;
   scene.add(sun);
 
   const fill = new THREE.DirectionalLight(0x93c5fd, 0.72);
@@ -1310,6 +1359,7 @@ function buildMap() {
   addBlock({ x: 0, z: -50, width: MAP_SIZE * 0.72, height: 0.045, depth: 4.8, material: materials.road, blocks: false });
   addRoadMarkings();
   addGroundDetails();
+  addUltraBattlefieldDetail();
 
   const wallMat = materials.concreteDark;
   addBlock({ x: 0, z: -MAP_HALF - 0.7, width: MAP_SIZE + 2, height: 3.3, depth: 1.4, material: wallMat });
@@ -1534,6 +1584,47 @@ function buildMap() {
   addTankTrap(12, -69, -0.2);
   addTankTrap(-73, 18, Math.PI / 2);
   addTankTrap(73, -18, Math.PI / 2);
+}
+
+function addUltraBattlefieldDetail() {
+  const skylineMat = mat(0x31363a, 0.92, 0.02);
+  [-72, -52, -30, 30, 52, 72].forEach((x, index) => {
+    addBlock({ x, z: -80.5, width: 11 + (index % 2) * 3, height: 5.8 + (index % 3), depth: 1.1, material: skylineMat, blocks: false });
+    addBlock({ x: -x, z: 80.5, width: 10 + (index % 3) * 2, height: 5.2 + (index % 2) * 1.6, depth: 1.1, material: skylineMat, blocks: false });
+  });
+
+  [
+    [-72, 62],
+    [-54, 28],
+    [-42, -64],
+    [-18, 76],
+    [18, -76],
+    [42, 64],
+    [54, -28],
+    [72, -62],
+  ].forEach(([x, z], index) => {
+    addPuddle(x, z, THREE.MathUtils.randFloat(1.2, 2.2), THREE.MathUtils.randFloat(0.52, 0.96), index * 0.4);
+    addSpentShells(x + THREE.MathUtils.randFloatSpread(1.2), z + THREE.MathUtils.randFloatSpread(1.2), 10, 1.8);
+  });
+
+  [
+    [-75, 34],
+    [-60, -60],
+    [-28, 54],
+    [28, -54],
+    [60, 60],
+    [75, -34],
+  ].forEach(([x, z]) => {
+    addRubblePile(x, z);
+    addCrater(x + THREE.MathUtils.randFloatSpread(2), z + THREE.MathUtils.randFloatSpread(2), THREE.MathUtils.randFloat(1.5, 2.4));
+  });
+
+  [
+    [-68, 0, Math.PI / 2],
+    [68, 0, Math.PI / 2],
+    [-36, 76, 0.1],
+    [36, -76, Math.PI + 0.1],
+  ].forEach(([x, z, rot]) => addMudRuts(x, z, 11, rot));
 }
 
 function addBuilding(x, z, width, depth, height) {
@@ -3279,6 +3370,10 @@ function updateAmbientGraphics() {
     mote.mesh.position.y += Math.sin(clock.elapsedTime * 0.58 + mote.seed) * 0.0015;
     if (mote.mesh.position.y < 0.4) mote.mesh.position.y = 7.5;
     mote.mesh.quaternion.copy(camera.quaternion);
+  }
+  for (const shimmer of heatShimmers) {
+    shimmer.mesh.material.opacity = shimmer.baseOpacity + Math.sin(clock.elapsedTime * 0.42 + shimmer.seed) * 0.014;
+    shimmer.mesh.rotation.z = 0.14 + Math.sin(clock.elapsedTime * 0.18 + shimmer.seed) * 0.025;
   }
 }
 
